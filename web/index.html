@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bytepair visualizer</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #656d76; --border: #d0d7de; --panel: #f6f8fa;
+    --t0: #dbe4ff; --t1: #ffe8cc; --t2: #d3f9d8; --t3: #ffdeeb; --t4: #e5dbff; --t5: #c5f6fa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --fg: #e6edf3; --muted: #8d96a0; --border: #30363d; --panel: #161b22;
+      --t0: #253d7a; --t1: #6b3d10; --t2: #1f5130; --t3: #6b2341; --t4: #3f2b78; --t5: #11535c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.sub { color: var(--muted); margin: 0 0 20px; }
+  a { color: inherit; }
+  textarea { width: 100%; min-height: 140px; padding: 12px; font: 14px/1.5 ui-monospace, Menlo, monospace;
+    background: var(--panel); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; resize: vertical; }
+  .bar { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 12px 0; color: var(--muted); font-size: 14px; }
+  .bar b { color: var(--fg); }
+  label { cursor: pointer; }
+  #out { padding: 12px; border: 1px solid var(--border); border-radius: 6px; min-height: 60px;
+    font: 14px/1.9 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+  #out span { border-radius: 3px; padding: 1px 0; }
+  #out.ids span { margin-right: 4px; padding: 1px 4px; }
+  .t0 { background: var(--t0); } .t1 { background: var(--t1); } .t2 { background: var(--t2); }
+  .t3 { background: var(--t3); } .t4 { background: var(--t4); } .t5 { background: var(--t5); }
+  #status { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>bytepair visualizer</h1>
+  <p class="sub">A byte-level BPE tokenizer trained on <i>Pride and Prejudice</i> (1,024 tokens).
+    The Python source runs in your browser with Pyodide.
+    <a href="https://github.com/cameronervin/bytepair">Source on GitHub</a>.</p>
+  <textarea id="input" spellcheck="false">Elizabeth Bennet met Mr. Darcy at the ball in 1813.
+It is a truth universally acknowledged...
+Tokenizers struggle with code: def f(x): return x ** 2  and emoji 😉</textarea>
+  <div class="bar">
+    <span id="status">Loading Python...</span>
+    <span>Tokens: <b id="ntok">-</b></span>
+    <span>Bytes: <b id="nbytes">-</b></span>
+    <span>Bytes/token: <b id="ratio">-</b></span>
+    <label><input type="checkbox" id="showids"> Show ids</label>
+  </div>
+  <div id="out"></div>
+</main>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+const FILES = ["bytepair/__init__.py", "bytepair/base.py", "bytepair/basic.py", "bytepair/regex.py"];
+const MODEL = "models/pride.model";
+const input = document.getElementById("input");
+const out = document.getElementById("out");
+const showIds = document.getElementById("showids");
+let tokenize = null;
+
+async function boot() {
+  const py = await loadPyodide();
+  await py.loadPackage("regex");
+  py.FS.mkdirTree("/app/bytepair");
+  py.FS.mkdirTree("/app/models");
+  for (const path of [...FILES, MODEL]) {
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(`could not fetch ${path}`);
+    py.FS.writeFile(`/app/${path}`, await res.text());
+  }
+  py.runPython(`
+import sys, json
+sys.path.insert(0, "/app")
+from bytepair.regex import RegexTokenizer
+tok = RegexTokenizer()
+tok.load("/app/models/pride.model")
+
+def tokenize(text):
+    ids = tok.encode(text, allowed_special="all")
+    pieces = [tok.vocab[i].decode("utf-8", errors="replace") for i in ids]
+    return json.dumps({"ids": ids, "pieces": pieces})
+`);
+  tokenize = py.globals.get("tokenize");
+  document.getElementById("status").textContent = "Ready.";
+  render();
+}
+
+function render() {
+  if (!tokenize) return;
+  const text = input.value;
+  const { ids, pieces } = JSON.parse(tokenize(text));
+  const nbytes = new TextEncoder().encode(text).length;
+  out.replaceChildren();
+  out.classList.toggle("ids", showIds.checked);
+  ids.forEach((id, i) => {
+    const span = document.createElement("span");
+    span.className = "t" + (i % 6);
+    span.textContent = showIds.checked ? id : pieces[i];
+    span.title = `id ${id}: ${JSON.stringify(pieces[i])}`;
+    out.appendChild(span);
+  });
+  document.getElementById("ntok").textContent = ids.length;
+  document.getElementById("nbytes").textContent = nbytes;
+  document.getElementById("ratio").textContent = ids.length ? (nbytes / ids.length).toFixed(2) : "-";
+}
+
+input.addEventListener("input", render);
+showIds.addEventListener("change", render);
+boot().catch(err => { document.getElementById("status").textContent = "Error: " + err.message; });
+</script>
+</body>
+</html>
