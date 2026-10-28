@@ -39,18 +39,3 @@ class BasicTokenizer(Tokenizer):
 
     def encode(self, text: str) -> list[int]:
         return self._encode_bytes(text.encode("utf-8"))
-
-    def _encode_bytes(self, text_bytes: bytes) -> list[int]:
-        """Apply merges in the order they were learned.
-
-        At each step, merge the pair that was learned earliest. Later merges
-        can depend on earlier ones, so order matters.
-        """
-        ids = list(text_bytes)
-        while len(ids) >= 2:
-            stats = get_stats(ids)
-            pair = min(stats, key=lambda p: self.merges.get(p, float("inf")))
-            if pair not in self.merges:
-                break
-            ids = merge(ids, pair, self.merges[pair])
-        return ids
