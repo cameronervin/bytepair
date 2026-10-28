@@ -52,3 +52,10 @@ def test_save_load(tmp_path):
 def test_vocab_size_too_small():
     with pytest.raises(ValueError):
         BasicTokenizer().train("abc", 100)
+
+
+def test_render_token():
+    from bytepair.base import render_token
+
+    assert render_token(b"hi\n") == "hi\\u000a"
+    assert render_token("😉".encode()[:2]) == "<f0><9f>"

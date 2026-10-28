@@ -87,8 +87,8 @@ regex chunk once and caches the result.
   are built from earlier ones, so this order is required.
 - **Special tokens.** `encode` raises by default if the text contains a special token string. This follows
   tiktoken and stops user text from injecting structure tokens. Pass `allowed_special="all"` to allow them.
-- **GPT-4 byte shuffle.** tiktoken gives the 256 single bytes ranks that differ from their byte values.
-  `GPT4Tokenizer` permutes bytes before BPE and reverses the permutation when decoding.
+- **GPT-4 byte shuffle.** In tiktoken, a single byte's rank is not its byte value. `GPT4Tokenizer` maps
+  bytes to ranks before BPE and maps them back when decoding.
 
 ## Development
 
@@ -97,13 +97,14 @@ uv run pytest
 uv run ruff check . && uv run ruff format --check .
 ```
 
-## What I learned
+## Notes on tokenization
 
-- Tokens are bytes, not characters. An emoji is 4 bytes, and a small tokenizer shows it as 4 tokens.
-- The training data sets the tokenizer's strengths. The Austen model compresses English prose well and handles
-  code and Korean at close to one byte per token.
-- Many LLM quirks come from tokenization: weak arithmetic on numbers split into chunks, higher cost for
-  non-English text, and sensitivity to trailing whitespace.
+- The base vocabulary is bytes, not characters. The showcase model encodes 😉 as 4 tokens, one per byte.
+  The visualizer shows these partial bytes as hex, e.g. `<f0>`.
+- Training data sets what a tokenizer compresses well. The showcase model gets 2.54 bytes/token on an
+  Austen sentence and 1.00 on Korean. GPT-4's tokenizer gets 4.50 and 3.07 on the same text.
+- The GPT-4 split pattern breaks numbers into groups of up to three digits. `1234567` becomes
+  `123`, `456`, `7`, which is one reason LLMs are weak at digit-level arithmetic.
 
 ## Credits
 

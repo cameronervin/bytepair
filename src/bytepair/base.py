@@ -49,8 +49,14 @@ def replace_control_characters(s: str) -> str:
 
 
 def render_token(t: bytes) -> str:
-    """Decode token bytes for display. Partial UTF-8 sequences show as U+FFFD."""
-    return replace_control_characters(t.decode("utf-8", errors="replace"))
+    """Decode token bytes for display.
+
+    A token can hold part of a multi-byte character. Those bytes show as hex, e.g. <f0>.
+    """
+    try:
+        return replace_control_characters(t.decode("utf-8"))
+    except UnicodeDecodeError:
+        return "".join(f"<{b:02x}>" for b in t)
 
 
 class Tokenizer:

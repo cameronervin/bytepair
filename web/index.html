@@ -44,7 +44,8 @@
     <a href="https://github.com/cameronervin/bytepair">Source on GitHub</a>.</p>
   <textarea id="input" spellcheck="false">Elizabeth Bennet met Mr. Darcy at the ball in 1813.
 It is a truth universally acknowledged...
-Tokenizers struggle with code: def f(x): return x ** 2  and emoji 😉</textarea>
+Code: def f(x): return x ** 2
+Emoji: 😉</textarea>
   <div class="bar">
     <span id="status">Loading Python...</span>
     <span>Tokens: <b id="ntok">-</b></span>
@@ -80,10 +81,16 @@ from bytepair.regex import RegexTokenizer
 tok = RegexTokenizer()
 tok.load("/app/models/pride.model")
 
+def piece(b):
+    # A token can hold part of a multi-byte character. Show those bytes as hex.
+    try:
+        return b.decode("utf-8")
+    except UnicodeDecodeError:
+        return "".join(f"<{x:02x}>" for x in b)
+
 def tokenize(text):
     ids = tok.encode(text, allowed_special="all")
-    pieces = [tok.vocab[i].decode("utf-8", errors="replace") for i in ids]
-    return json.dumps({"ids": ids, "pieces": pieces})
+    return json.dumps({"ids": ids, "pieces": [piece(tok.vocab[i]) for i in ids]})
 `);
   tokenize = py.globals.get("tokenize");
   document.getElementById("status").textContent = "Ready.";

@@ -4,9 +4,9 @@ tiktoken stores a vocab as {token bytes: rank}, not as a list of merges. We
 recover the merges by running BPE on each token's bytes, using only the
 merges ranked below it. The two parts that merge into the token are its pair.
 
-tiktoken also gives the 256 single bytes ranks that are not equal to the
-byte values. We keep that as a byte shuffle: bytes are permuted before BPE
-and permuted back after decoding.
+In tiktoken, a single byte's rank is not its byte value. We store this
+mapping as a byte shuffle. Bytes are mapped to ranks before BPE and mapped
+back after decoding.
 
 Needs tiktoken: pip install bytepair[gpt4]
 """
