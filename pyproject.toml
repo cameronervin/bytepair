@@ -8,6 +8,9 @@ authors = [{ name = "Cameron Ervin" }]
 requires-python = ">=3.12"
 dependencies = ["regex>=2024.0", "rich>=13.0"]
 
+[project.optional-dependencies]
+gpt4 = ["tiktoken>=0.7"]
+
 [project.scripts]
 bytepair = "bytepair.cli:main"
 
